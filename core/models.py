@@ -34,6 +34,8 @@ class Tutor(models.Model):
     email = models.EmailField()
     phone = models.CharField(max_length=20)
     medium = models.CharField(max_length=50)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="tutor")
+
 
     def __str__(self):
         return self.name
@@ -50,6 +52,8 @@ class Guardian(models.Model):
     verified_yn = models.BooleanField()
     email = models.EmailField()
     phone = models.CharField(max_length=20)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="guardian")
+
 
     def __str__(self):
         return self.name
