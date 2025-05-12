@@ -1,29 +1,23 @@
 import { useState } from "react";
-import { FaCheckCircle, FaSpinner } from "react-icons/fa"; // Added FaSpinner
+import { FaCheckCircle, FaSpinner, FaEye, FaEyeSlash } from "react-icons/fa"; // Added FaEye, FaEyeSlash
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from '../supabase.js'; // Ensure Supabase client is imported
 
 const LandingPage = () => {
-  // State for role selection
-  const [role, setRole] = useState(null); // "tutor" means user wants a tutor (is a Guardian), "teacher" means user wants to teach (is a Teacher)
-  // State for input fields
+  const [role, setRole] = useState(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  // Added back isLoading and signInError states
+  const [showPassword, setShowPassword] = useState(false); // State for password visibility
   const [isLoading, setIsLoading] = useState(false);
   const [signInError, setSignInError] = useState("");
 
-  // Hook for navigation
   const navigate = useNavigate();
 
-  // Define the purple color consistent with other pages
-  const primaryColor = "bg-[#6344cc]"; // Main purple
-  const hoverColor = "hover:bg-[#5238a8]"; // Darker purple for hover
-  const focusRingColor = "focus:ring-[#6344cc]"; // Purple for focus rings
+  const primaryColor = "bg-[#6344cc]";
+  const hoverColor = "hover:bg-[#5238a8]";
+  const focusRingColor = "focus:ring-[#6344cc]";
 
-  // Handles the sign-in button click WITH Supabase AND Role Check
-  const handleSignIn = async () => { // Added async keyword back
-    // Basic validation
+  const handleSignIn = async () => {
     if (!role) {
       setSignInError("Please select your role.");
       return;
@@ -34,55 +28,39 @@ const LandingPage = () => {
     }
 
     setIsLoading(true);
-    setSignInError(""); // Clear previous errors
+    setSignInError("");
 
     try {
-      // --- Actual Supabase Sign-In ---
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email,
         password: password,
       });
-      // --- End Supabase Sign-In ---
 
       if (error) {
-        // Handle specific errors if needed (e.g., "Invalid login credentials")
         setSignInError(error.message);
         setIsLoading(false);
         return;
       }
 
-      // Successful sign-in - NOW CHECK ROLE
       if (data.user) {
         console.log("Successfully signed in:", data.user);
-
-        // Get the role stored during sign-up from metadata
-        const storedUserRole = data.user.user_metadata?.user_role; // e.g., 'guardian' or 'teacher'
-
-        // Determine the expected role based on the button clicked
-        // 'tutor' button means the user is trying to log in as a Guardian
-        // 'teacher' button means the user is trying to log in as a Teacher
+        const storedUserRole = data.user.user_metadata?.user_role;
         const expectedRole = role === "tutor" ? "guardian" : "teacher";
 
-        // Check if the selected role matches the stored role
         if (storedUserRole === expectedRole) {
-          // Roles match - navigate to the correct dashboard
           if (expectedRole === "guardian") {
             navigate("/guardian-dashboard");
           } else if (expectedRole === "teacher") {
-            navigate("/tutor-dashboard"); // Ensure this route exists and points to the Tutor component
+            navigate("/tutor-dashboard");
           } else {
-            // Fallback if role is something unexpected
              console.warn("User has unexpected role:", storedUserRole);
-             navigate("/"); // Navigate to default page
+             navigate("/");
           }
         } else {
-          // Roles DO NOT match
           setSignInError(`Incorrect role selected. This account is registered as a ${storedUserRole || 'user'}. Please select the correct role.`);
-          // Sign the user out again because the role selection was wrong
           await supabase.auth.signOut();
         }
       } else {
-        // Fallback if no user data despite no error
         setSignInError("Sign in failed. Please try again.");
       }
     } catch (error) {
@@ -94,18 +72,33 @@ const LandingPage = () => {
   };
 
   return (
-    <div className="relative w-full h-screen bg-[#fafafa] overflow-hidden">
+    <div className="relative w-full h-screen bg-[#fafafa] overflow-hidden font-roboto"> {/* Added font-roboto */}
       {/* Background Image */}
-      <img src="/image-8@2x.png" alt="Background" className="absolute inset-0 w-full h-full object-cover z-0 pointer-events-none" />
+      <img
+        src="/image-8@2x.png" // Ensure this is the correct background for landing page
+        alt="Background"
+        className="absolute inset-0 w-full h-full object-cover z-0 pointer-events-none"
+      />
 
-      {/* Logo */}
-      <div className="absolute top-4 left-4 z-10"> <img src="/untitled-design--1-removebgpreview-1@2x.png" alt="Logo" className="w-24 h-24 object-contain" /> </div>
+      {/* Logo - Styling consistent with other pages */}
+      <img
+        className="absolute top-4 left-4 sm:top-[-0.562rem] sm:left-[-0.875rem] w-24 h-24 sm:w-[10.438rem] sm:h-[10.438rem] object-contain z-20" // Increased z-index
+        alt="Toppers Trust Logo"
+        src="/untitled-design--1-removebgpreview-1@2x.png" // Main logo
+      />
 
-      {/* Toppers Trust Text */}
-      <div className="absolute top-6 left-1/2 transform -translate-x-1/2 z-10 text-4xl sm:text-5xl md:text-7xl font-bold text-cyan-800 px-2"> Toppers Trust </div>
+      {/* Toppers Trust Text - Styling consistent with other pages */}
+      <div className="absolute top-6 left-1/2 transform -translate-x-1/2 sm:top-[1.5rem] text-[1.75rem] sm:text-[2.25rem] md:text-4xl lg:text-5xl font-oswald font-bold text-[#40919e] z-20 text-center whitespace-nowrap px-2"> {/* Adjusted font sizes, added font-oswald, increased z-index */}
+        TOPPERS TRUST
+      </div>
 
       {/* Job Board link */}
-      <Link to="/job-card" className="absolute top-6 right-4 sm:right-6 text-base sm:text-lg font-medium z-20 text-black hover:underline cursor-pointer"> Job Board </Link>
+      <Link
+        to="/job-card" // Points to the swiping job card page
+        className="absolute top-6 right-4 sm:right-6 text-base sm:text-lg font-medium z-20 text-black hover:underline cursor-pointer" // Kept z-20
+      >
+        Job Board
+      </Link>
 
       {/* Centered Login Card */}
       <div className="relative z-10 flex flex-col items-center justify-center h-full p-4">
@@ -116,12 +109,12 @@ const LandingPage = () => {
           {/* Role Select Buttons */}
           <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 mb-6">
             {[
-              { type: "tutor", label: "I Want a Tutor", subtext: "Guardian" },
-              { type: "teacher", label: "I Want to Teach", subtext: "Teacher" },
+              { type: "tutor", label: "I Want a Tutor", subtext: "Guardian " },
+              { type: "teacher", label: "I Want to Teach", subtext: "Teacher " },
             ].map((roleOption) => (
               <div key={roleOption.type} className="flex flex-col items-center">
                 <button
-                  onClick={() => { setRole(roleOption.type); setSignInError(""); /* Clear error on role change */ }}
+                  onClick={() => { setRole(roleOption.type); setSignInError(""); }}
                   className={`w-full sm:w-auto relative px-4 py-2.5 rounded-full flex items-center justify-center gap-2 text-white text-sm sm:text-base font-medium transition-all duration-300 focus:outline-none focus:ring-2 ${focusRingColor} focus:ring-offset-2 ${ role === roleOption.type ? `${primaryColor}` : `bg-purple-400 hover:bg-purple-500` }`}
                 >
                   {roleOption.label}
@@ -134,11 +127,27 @@ const LandingPage = () => {
 
           {/* Login Form */}
           <div className="flex flex-col gap-4 mb-4">
-            <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className={`p-3 rounded-lg border ${signInError ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 ${focusRingColor} text-sm sm:text-base`} />
-            <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className={`p-3 rounded-lg border ${signInError ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 ${focusRingColor} text-sm sm:text-base`} />
+            <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className={`p-3 rounded-lg border ${signInError && (!email || !password) ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 ${focusRingColor} text-sm sm:text-base`} />
+            {/* Password Input with Visibility Toggle */}
+            <div className="relative">
+                <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className={`w-full p-3 pr-10 rounded-lg border ${signInError && (!email || !password) ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 ${focusRingColor} text-sm sm:text-base`}
+                />
+                <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5 text-gray-500 hover:text-gray-700"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                    {showPassword ? <FaEyeSlash size={18}/> : <FaEye size={18}/>}
+                </button>
+            </div>
           </div>
 
-          {/* Sign In Error Message Display */}
            {signInError && ( <p className="text-red-500 text-xs sm:text-sm mb-3">{signInError}</p> )}
 
           {/* Sign In Button */}
