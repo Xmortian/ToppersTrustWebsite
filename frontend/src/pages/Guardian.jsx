@@ -5,96 +5,141 @@ import { supabase } from '../supabase.js'; // Import Supabase client
 // Placeholder Icons
 import { FaSignOutAlt } from 'react-icons/fa';
 
-// Initial state for guardianData, will be overwritten by fetched data
 const initialGuardianData = {
   name: "Loading...",
   guardianId: "...",
   profileImageUrl: "", // Default or placeholder image
 };
 
-// Static recommended tutors data for now
-const recommendedTutorsData = [
-  { id: 1, name: "Moutmayen Nafis", imageUrl: "/a38522fd8f3b402eb5da65d82ffc6e5e-2@2x.png" },
-  { id: 2, name: "Tahsin Sayed", imageUrl: "/image-15@2x.png" },
-  { id: 3, name: "Taskia Maisha", imageUrl: "/a38522fd8f3b402eb5da65d82ffc6e5e-7@2x.png" },
-  { id: 4, name: "Nafisa Nahar", imageUrl: "/a38522fd8f3b402eb5da65d82ffc6e5e-1@2x.png" },
-  { id: 5, name: "Taskia Maisha", imageUrl: "/a38522fd8f3b402eb5da65d82ffc6e5e-5@2x.png" },
-];
-
-
 const Guardian = () => {
   const navigate = useNavigate();
   const [guardianData, setGuardianData] = useState(initialGuardianData);
-  const [loading, setLoading] = useState(true); // Added loading state
-  const [error, setError] = useState(null); // For sign-out and fetch errors
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // State for recommended tutors
+  const [recommendedTutors, setRecommendedTutors] = useState([]);
+  const [recommendationsLoading, setRecommendationsLoading] = useState(true);
+  const [recommendationsError, setRecommendationsError] = useState(null);
+
+  // Fallback image for tutors in the recommended list
+  const tutorImageFallback = () => `https://placehold.co/80x80/e0e0e0/7f7f7f?text=N/A`;
 
   useEffect(() => {
     const fetchGuardianData = async () => {
       setLoading(true);
-      setError(null); // Clear previous fetch errors
+      setError(null);
 
       const { data: { user }, error: authError } = await supabase.auth.getUser();
 
       if (authError || !user) {
         console.error('Error fetching user or no user logged in:', authError);
-        navigate('/'); // Redirect to login if no user or auth error
+        navigate('/');
         return;
       }
 
       try {
-        // Assuming your table is 'guardian' and linked by 'user_id'
-        // Adjust 'guardian' and column names if they are different in your schema.
+        // Fetch guardian profile
         const { data: profile, error: profileFetchError } = await supabase
-          .from('guardian') // YOUR GUARDIAN TABLE NAME
-          .select('id, name, photo') // Select columns: 'id' for guardianId, 'name', 'photo' for profile image
+          .from('guardian')
+          .select('id, name, photo')
           .eq('user_id', user.id)
           .single();
 
         if (profileFetchError) {
-          // PGRST116: " esattamente una fila" (exactly one row) not found
           if (profileFetchError.code === 'PGRST116') {
             console.warn('Guardian profile not found for user:', user.id);
-            // Set to default or guide to profile creation
             setGuardianData({
-              name: user.email.split('@')[0], // Fallback name
+              name: user.email?.split('@')[0] || "User",
               guardianId: "New User",
               profileImageUrl: "",
             });
             setError("Guardian profile not found. Please complete your profile.");
-            // navigate('/guardian/profile/edit'); // Optionally redirect to edit page
           } else {
-            throw profileFetchError; // Re-throw other errors
+            throw profileFetchError;
           }
         } else if (profile) {
           let imageUrl = profile.photo || "";
           if (profile.photo && !profile.photo.startsWith('http')) {
-            // Assuming 'profile-pics' or a similar bucket for guardian photos
-            const { data: publicUrlData } = supabase.storage.from('profile-pics').getPublicUrl(profile.photo);
-            imageUrl = publicUrlData?.publicUrl || profile.photo; // Fallback to raw path if URL construction fails
+            const { data: publicUrlData } = supabase.storage.from('photo').getPublicUrl(profile.photo);
+            imageUrl = publicUrlData?.publicUrl || profile.photo;
           }
+          
+          let displayName = user.email?.split('@')[0] || "User";
+          if (profile.name) {
+              const exclusionList = ['md', 'md.'];
+              const nameParts = profile.name
+                  .split(' ')
+                  .filter(part => part.length > 0)
+                  .filter(part => !exclusionList.includes(part.toLowerCase()));
+
+              if (nameParts.length > 0) {
+                  displayName = nameParts.reduce((shortest, current) => 
+                      current.length < shortest.length ? current : shortest, 
+                  nameParts[0]);
+              }
+          }
+
           setGuardianData({
-            name: profile.name || user.email.split('@')[0],
-            guardianId: profile.id?.toString() || "N/A", // Use 'id' column for guardianId
+            name: displayName,
+            guardianId: profile.id?.toString() || "N/A",
             profileImageUrl: imageUrl,
           });
         }
       } catch (fetchError) {
         console.error('Error fetching guardian profile:', fetchError);
         setError(`Failed to load dashboard data: ${fetchError.message}`);
-        // Fallback to some default data or show error prominently
         setGuardianData({
-            name: user.email?.split('@')[0] || "User",
-            guardianId: "Error",
-            profileImageUrl: "",
+          name: user.email?.split('@')[0] || "User",
+          guardianId: "Error",
+          profileImageUrl: "",
         });
       } finally {
         setLoading(false);
       }
     };
+
+    const fetchRecommendedTutorsList = async () => {
+      // This function's logic remains the same
+      setRecommendationsLoading(true);
+      setRecommendationsError(null);
+      setRecommendedTutors([]);
+      try {
+        const { data: recTutorRefs, error: recError } = await supabase.from('recommendedtutors').select('id2').limit(8);
+        if (recError) throw recError;
+        if (!recTutorRefs || recTutorRefs.length === 0) {
+          setRecommendationsLoading(false); return;
+        }
+        const tutorIntegerIDs = recTutorRefs.map(r => r.id2).filter(id => id != null);
+        if (tutorIntegerIDs.length === 0) {
+          setRecommendationsLoading(false); return;
+        }
+        const { data: tutorsDetails, error: detailsError } = await supabase.from('tutor_card').select('id, name, photo').in('id', tutorIntegerIDs);
+        if (detailsError) throw detailsError;
+        const mappedTutors = tutorsDetails.map(tutor => {
+          let imageUrl = tutorImageFallback();
+          if (tutor.photo) {
+            if (tutor.photo.startsWith('http')) { imageUrl = tutor.photo; }
+            else { const { data: p } = supabase.storage.from('photo').getPublicUrl(tutor.photo); imageUrl = p?.publicUrl || tutorImageFallback(); }
+          }
+          return { id: tutor.id, name: tutor.name || 'Unnamed Tutor', imageUrl: imageUrl };
+        });
+        setRecommendedTutors(mappedTutors);
+      } catch (err) {
+        console.error("Failed to fetch recommended tutors:", err);
+        setRecommendationsError(err.message || 'Could not load recommendations.');
+        setRecommendedTutors([]);
+      } finally {
+        setRecommendationsLoading(false);
+      }
+    };
+
     fetchGuardianData();
+    fetchRecommendedTutorsList();
   }, [navigate]);
 
   const handleSignOut = async () => {
+    // This function's logic remains the same
     setError(null);
     try {
       const { error: signOutError } = await supabase.auth.signOut();
@@ -103,30 +148,39 @@ const Guardian = () => {
     } catch (error) {
       console.error("Error signing out:", error);
       setError(`Sign out failed: ${error.message}`);
-      alert(`Sign out failed: ${error.message}`);
     }
   };
 
-  const profileImageFallback = "https://placehold.co/150x200/6344cc/FFF?text=" + 
+  const profileImageFallback = "https://placehold.co/150x200/6344cc/FFF?text=" +
     (guardianData.name && guardianData.name !== "Loading..." ? guardianData.name.split(' ').map(n=>n[0]).join('') : "G");
-  
-  const tutorImageFallback = () => `https://placehold.co/80x80/e0e0e0/7f7f7f?text=Photo`;
+
+  // MODIFIED: Further reduced font sizes for mobile to prevent wrapping
+  const getFontSizeClass = (name) => {
+    const length = name?.length || 0;
+    if (length < 9) return "text-3xl sm:text-4xl md:text-5xl";
+    if (length < 12) return "text-2xl sm:text-3xl md:text-4xl";
+    return "text-xl sm:text-2xl md:text-3xl";
+  };
 
   if (loading) {
-    return <div className="flex justify-center items-center min-h-screen text-xl">Loading Guardian Dashboard...</div>;
+    return <div className="flex justify-center items-center min-h-screen text-xl bg-slate-800 text-gray-300">Loading Guardian Dashboard...</div>;
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 font-roboto text-[#000] pb-24">
-      {/* Header Section */}
-      <header className="bg-[#3b394d] text-white p-6 shadow-md relative h-[14.875rem] flex items-center">
-        <div className="container mx-auto flex justify-between items-center w-full">
-          <div className="text-left text-[#e2c4c4]">
-            <h1 className="text-5xl sm:text-6xl md:text-7xl font-bold leading-tight">
-              {guardianData.name.split(' ')[0]} <br />
-              {guardianData.name.split(' ').slice(1).join(' ')}
+    <div className="min-h-screen bg-slate-800 font-roboto text-gray-100 pb-24">
+      <header className="bg-[#3b394d] text-white p-4 md:p-6 shadow-md relative h-[14.875rem] flex items-center">
+        {/* MODIFIED: Switched to a 3-column CSS Grid layout for robust alignment */}
+        <div className="container mx-auto grid grid-cols-3 items-start w-full gap-2">
+          
+          <div className="text-left">
+            <h2 className="text-base sm:text-lg font-semibold mb-1 text-red-300 opacity-90">
+              Guardian
+            </h2>
+            <h1 className={`font-bold leading-tight text-white ${getFontSizeClass(guardianData.name)}`}>
+              {guardianData.name}
             </h1>
           </div>
+
           <div className="absolute left-1/2 top-[5.5rem] transform -translate-x-1/2 z-10">
               <img
               src={guardianData.profileImageUrl || profileImageFallback}
@@ -135,9 +189,11 @@ const Guardian = () => {
               className="w-[9rem] h-[12rem] sm:w-[10rem] sm:h-[14rem] md:w-[12rem] md:h-[16rem] rounded-[60px] border-4 border-white shadow-lg object-cover"
             />
           </div>
-          <div className="text-right">
+          
+          <div className="text-right col-start-3">
             <p className="text-base sm:text-lg text-gray-300 mb-1">Guardian ID</p>
-            <p className="text-5xl sm:text-6xl md:text-7xl font-semibold">{guardianData.guardianId}</p>
+            {/* MODIFIED: Sized down the ID font to match the name font */}
+            <p className="text-3xl sm:text-4xl md:text-5xl font-bold">{guardianData.guardianId}</p>
             <button
               onClick={handleSignOut}
               className="mt-3 text-sm text-gray-300 hover:text-white transition-colors flex items-center ml-auto"
@@ -148,14 +204,14 @@ const Guardian = () => {
         </div>
       </header>
 
-      {/* Navigation Buttons Section */}
+      {/* The rest of the component remains unchanged */}
       <section className="relative py-8 px-4 pt-40 sm:pt-44 md:pt-52">
         <div className="container mx-auto grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 lg:gap-10 relative z-10">
           {[
             { name: "Profile", path: "/guardian/profile", bgColor: "bg-gradient-to-br from-gray-300 to-gray-400 hover:from-gray-400 hover:to-gray-500" },
-            { name: "Short List", path: "/tutor-card", bgColor: "bg-gradient-to-br from-gray-400 to-gray-500 hover:from-gray-500 hover:to-gray-600" },
+            { name: "Shortlist", path: "/tutor-card", bgColor: "bg-gradient-to-br from-gray-400 to-gray-500 hover:from-gray-500 hover:to-gray-600" },
             { name: "Post Job", path: "/guardian/post-job", bgColor: "bg-gradient-to-br from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700" },
-            { name: "Previous Jobs", path: "/guardian/previous-jobs", bgColor: "bg-gradient-to-br from-gray-300 to-gray-400 hover:from-gray-400 hover:to-gray-500" },
+            { name: "Posted Jobs", path: "/guardian/previous-jobs", bgColor: "bg-gradient-to-br from-gray-300 to-gray-400 hover:from-gray-400 hover:to-gray-500" },
           ].map((button) => (
             <Link
               key={button.name}
@@ -168,36 +224,43 @@ const Guardian = () => {
         </div>
       </section>
 
-        {/* Error display for fetch error */}
-        {error && !error.toLowerCase().includes("sign out") && (
-            <div className="container mx-auto text-center py-4">
-                <p className="text-red-500">{error}</p>
-            </div>
-        )}
+      {error && (
+        <div className="container mx-auto text-center py-4">
+          <p className="text-red-400">{error}</p>
+        </div>
+      )}
 
-      {/* Recommended Tutors Section */}
       <section className="pt-8 pb-12 px-4 mt-16 md:mt-24 lg:mt-32">
         <div className="container mx-auto">
-          <h3 className="text-base font-semibold text-gray-700 mb-3">Recommended Tutors</h3>
-          {/* Display sign-out error specifically if it occurred (already handled by general error display above if needed) */}
-          {error && error.toLowerCase().includes("sign out") && <p className="text-red-500 text-center mb-4">{error}</p>}
-          <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-4 sm:gap-5">
-            {recommendedTutorsData.map((tutor) => (
-              <Link
-                key={tutor.id}
-                to="/browse-tutors" // You might want to link to a specific tutor's profile: `/tutor/${tutor.id}`
-                className="block bg-white p-1.5 rounded-md shadow hover:shadow-md transition-transform transform hover:scale-105 text-center group"
-              >
-                <img
-                  src={tutor.imageUrl || tutorImageFallback()}
-                  alt={tutor.name}
-                  onError={(e) => { e.target.onerror = null; e.target.src = tutorImageFallback(); }}
-                  className="w-full h-16 sm:h-20 object-cover rounded-sm mb-1.5 mx-auto"
-                />
-                <h4 className="text-[10px] sm:text-xs font-medium text-gray-600 group-hover:text-blue-600 truncate px-1">{tutor.name}</h4>
-              </Link>
-            ))}
+          <h3 className="text-base font-semibold text-gray-300 mb-3">Recommended Tutors</h3>
+          {recommendationsLoading && <p className="text-gray-400 text-center py-4">Loading recommendations...</p>}
+          {!recommendationsLoading && recommendationsError && (
+            <p className="text-red-400 text-center py-4">Error: {recommendationsError}</p>
+          )}
+          {!recommendationsLoading && !recommendationsError && recommendedTutors.length === 0 && (
+            <p className="text-gray-400 text-center py-4">No recommended tutors available at the moment.</p>
+          )}
+          {!recommendationsLoading && !recommendationsError && recommendedTutors.length > 0 && (
+            <div className="max-w-4xl mx-auto px-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
+              {recommendedTutors.map((tutor) => (
+                <Link
+                  key={tutor.id}
+                  to={`/browse-tutors`}
+                  className="block bg-white p-2 rounded-md shadow hover:shadow-md transition-transform transform hover:scale-105 text-center group"
+                >
+                  <img
+                    src={tutor.imageUrl}
+                    alt={tutor.name}
+                    onError={(e) => { e.target.onerror = null; e.target.src = tutorImageFallback(); }}
+                    className="w-full h-24 object-cover object-top rounded-sm mb-2"
+                  />
+                  <h4 className="text-sm font-medium text-gray-600 group-hover:text-blue-600 truncate px-1">{tutor.name}</h4>
+                </Link>
+              ))}
+            </div>
           </div>
+          )}
         </div>
       </section>
     </div>

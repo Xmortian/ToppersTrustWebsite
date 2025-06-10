@@ -21,16 +21,8 @@ const ResetPass = () => {
       async (event, session) => {
         if (event === "PASSWORD_RECOVERY") {
           console.log("Password recovery event detected, session set.");
-          // The user is now in a state where they can update their password.
-          // No explicit action needed here other than allowing them to fill the form.
+  
         }
-        // Optional: If there's no session and no recovery event, redirect.
-        // This might be too aggressive if the page is loaded slightly before the hash is processed by Supabase.
-        // else if (!session && event !== "INITIAL_SESSION") { // Check event to avoid redirect on initial load
-        //   console.log("No session for password recovery, redirecting.");
-        //   setMessage("Invalid or expired password reset link.");
-        //   setTimeout(() => navigate('/'), 3000);
-        // }
       }
     );
 

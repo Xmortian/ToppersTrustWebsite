@@ -85,7 +85,7 @@ const TermsAndConditions = () => {
 
           <h3 className="text-[1.25rem] sm:text-[1.5rem] font-semibold mt-6 mb-3 text-gray-800">Platform Charges for Tutors</h3>
           <p>
-            <strong>Platform Charge:</strong> Tutors pay a 40% platform charge per confirmed tuition job (Home or Online Tutoring only). This fee is due
+            <strong>Platform Charge:</strong> Tutors pay a 50% platform charge per confirmed tuition job (Home or Online Tutoring only). This fee is due
             within 15 days of job confirmation.
           </p>
           <p>
@@ -113,14 +113,14 @@ const TermsAndConditions = () => {
               <tbody className="bg-white">
                 <tr>
                   <td className="border-b border-gray-300 px-4 py-2 text-gray-700">Home Tutoring</td>
-                  <td className="border-b border-gray-300 px-4 py-2 text-gray-700">40%</td>
-                  <td className="border-b border-gray-300 px-4 py-2 text-gray-700">20%</td>
-                  <td className="border-b border-gray-300 px-4 py-2 text-gray-700">20%</td>
+                  <td className="border-b border-gray-300 px-4 py-2 text-gray-700">50%</td>
+                  <td className="border-b border-gray-300 px-4 py-2 text-gray-700">25%</td>
+                  <td className="border-b border-gray-300 px-4 py-2 text-gray-700">25%</td>
                 </tr>
                 <tr>
                   <td className="border-b border-gray-300 px-4 py-2 text-gray-700">Online Tutoring</td>
-                  <td className="border-b border-gray-300 px-4 py-2 text-gray-700">40%</td>
-                  <td className="border-b border-gray-300 px-4 py-2 text-gray-700">20%</td>
+                  <td className="border-b border-gray-300 px-4 py-2 text-gray-700">50%</td>
+                  <td className="border-b border-gray-300 px-4 py-2 text-gray-700">25%</td>
                   <td className="border-b border-gray-300 px-4 py-2 text-gray-700">N/A</td>
                 </tr>
               </tbody>

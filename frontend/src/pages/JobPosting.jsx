@@ -9,27 +9,20 @@ import { FaTimesCircle } from "react-icons/fa";
 // --- Dropdown Options ---
 const studentCountOptions = Array.from({ length: 10 }, (_, i) => i + 1);
 const mediumOptions = ["", "Bangla", "English Version", "English Medium", "Uni Help", "Madrasha Help"];
-const classOptions = [ "", "Class 1", "Class 2", "Class 3", "Class 4", "Class 5", "Class 6", "Class 7", "Class 8", "Class 9", "Class 10", "Class 11", "Class 12", "University", "Special Skills" ];
-const paymentOptions = ["", "By month", "Per class"];
+const classOptions = [ "", "Playgroup", "Nursery", "Kindergarten", "Class 1", "Class 2", "Class 3", "Class 4", "Class 5", "Class 6", "Class 7", "Class 8", "Class 9", "Class 10", "O Level (Cambridge)", "O Level (Edexcel)", "IGCSE", "AS Level (Cambridge)", "AS Level (Edexcel)", "A Level (Cambridge)", "A Level (Edexcel)", "University", "Special Skills" ];
+const paymentOptions = ["", "By Month", "Per Class"];
 const daysOptions = ["", "1 Day/Week", "2 Days/Week", "3 Days/Week", "4 Days/Week", "5 Days/Week", "6 Days/Week", "7 Days/Week"];
 const cityOptions = ["", "Dhaka", "Chittagong", "Khulna", "Rajshahi", "Sylhet", "Barisal", "Rangpur", "Mymensingh"];
 const tuitionTypeOptions = ["", "Home Tutoring", "Online Tutoring", "Group Tutoring"];
 
-const subjectOptions = [
-    "", "Bangla", "English", "General Mathematics", "Higher Mathematics",
-    "Information and Communication Technology (ICT)", "Religion and Moral Education",
-    "Bangladesh and Global Studies", "Physical Education and Health", "Career Education",
-    "General Science", "Agriculture Studies", "Home Science",
-    "Physics", "Chemistry", "Biology", "Human Biology",
-    "History", "Geography and Environment", "Civics and Citizenship", "Economics", "English Literature",
-    "Art & Design", "Psychology", "Religious Studies",
-    "Accounting", "Business Studies", "Finance and Banking", "Commerce",
-    "Environmental Management", "Additional Mathematics",
-    "French", "Spanish", "German", "Arabic", "Mandarin Chinese",
-    "Computer Science", "Design & Technology", "Applied ICT",
+const subjectOptions = [ 
+  "", "Bangla", "Bangla 1st Paper", "Bangla 2nd Paper", "English", "English 1st Paper", "English 2nd Paper", "English Language", "English Literature", "General Mathematics", "Higher Mathematics", "Additional Mathematics", "Mathematics A", "Mathematics B", "Pure Mathematics", "Statistics", "Physics", "Physics 1st Paper", "Physics 2nd Paper", "Chemistry", "Chemistry 1st Paper", "Chemistry 2nd Paper", "Biology", "Biology 1st Paper", "Biology 2nd Paper", "Human Biology", "General Science", "Agriculture Studies", "Home Science", "ICT", "Applied ICT", "Computer Science", "Programming (Python/C++)", "Design & Technology", 
+  "Accounting", "Business Studies", "Commerce", "Finance and Banking", "Economics", "Environmental Management", "Bangladesh and Global Studies", "History", "Modern World History", "Geography", "Geography and Environment", "Civics", "Civics and Citizenship", "Social Science", "Psychology", "Sociology", "Religious Studies", "Religion and Moral Education", "Islamic Studies", "Art & Design", "Physical Education and Health", "Career Education", 
+  "French", "Spanish", "German", "Arabic", "Mandarin Chinese", "IELTS Preparation", "SAT Preparation", "Guitar Learning", "Piano Learning", "Singing/Vocal", "Premier Pro (Video Editing)", "Photoshop", "Illustrator", "Digital Art", "Web Development", "Mobile App Development", "Robotics", "Debate/Public Speaking", "Creative Writing", "Critical Thinking", "Cambridge Global Perspectives", "Research and Project Work", 
+  "AS Paper 1", "AS Paper 2", "A2 Paper 3", "A2 Paper 4", "O Level Paper 1", "O Level Paper 2", "Mock Exam Practice"
 ];
 
-// UPDATED: More comprehensive list of Dhaka Thanas
+
 const dhakaThanas = [
     "",
     "Adabor", "Ashulia", "Badda", "Bangshal", "Bhashantek", "Bimanbandar", "Chakbazar", 
@@ -64,11 +57,11 @@ const initialFormState = {
     city: 'Dhaka',        
     category: 'English Medium', 
     subjects: [],
-    location: '',       // This state field holds the selected Thana/Area
-    address: '',        // This state field holds the Full Street Address
+    location: '',      // This state field holds the selected Thana/Area
+    address: '',        
     daysPerWeek: '5 Days/Week',
     startingDate: new Date().toISOString().split('T')[0],
-    paymentType: 'By month', 
+    paymentType: 'By Month(1 Month->Salary)', 
     classCourse: 'Class 8', 
     tutoringTime: '', 
     details: '',
@@ -112,11 +105,11 @@ const SelectInput = React.memo(({ name, label, value, onChange, options, require
     );
 });
 
-const TextInput = React.memo(({ name, label, value, onChange, placeholder = "", type = "text", required = false }) => {
+const TextInput = React.memo(({ name, label, value, onChange, placeholder = "", type = "text", required = false, maxLength }) => {
     return (
         <div>
             <label htmlFor={name} className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
-            <input type={type} id={name} name={name} value={value} onChange={onChange} placeholder={placeholder} required={required}
+            <input type={type} id={name} name={name} value={value} onChange={onChange} placeholder={placeholder} required={required} maxLength={maxLength}
                 className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[#6344cc] focus:border-[#6344cc] text-sm"
             />
         </div>
@@ -143,8 +136,17 @@ const JobPosting = () => {
     }, [formData.city]);
 
 
+    // MODIFIED: This function now enforces maxLength for all input types
     const handleInputChange = useCallback((e) => {
-        const { name, value } = e.target;
+        const { name, value, maxLength } = e.target;
+        
+        // Enforce maxLength check for all inputs, including type="number"
+        if (maxLength && value.length > maxLength) {
+            // If the new value exceeds the max length, do nothing.
+            // This stops the state from updating and prevents extra characters.
+            return;
+        }
+
         setFormData(prev => ({ ...prev, [name]: value }));
         if (message.text) setMessage({ type: '', text: '' });
     }, [message.text]);
@@ -243,7 +245,7 @@ const JobPosting = () => {
         try {
             const { data: guardianData, error: guardianError } = await supabase
                 .from('guardian') 
-                .select('id')     
+                .select('id')   
                 .eq('user_id', user.id) 
                 .single();
 
@@ -268,15 +270,16 @@ const JobPosting = () => {
         }
 
         const jobDataToInsert = {
+            job_id: `Job-${Date.now().toString().slice(-7)}`, // New "Job-XXXXXXX" format
             guardianid: guardianId,
             numberofstudents: parseInt(formData.noOfStudents, 10),
             genderpreference: formData.tutorGenderPref,
             salary: parseFloat(formData.salary),
             tuition_type: formData.tuitionType, 
             studentgender: formData.studentGender,
-            location: formData.address, // Full street address from formData.address is saved to 'location' column
-            city: formData.city,         // City from formData.city is saved to 'city' column
-            area: formData.location,     // Thana/Area (from formData.location dropdown) is saved to 'area' column
+            location: formData.address, 
+            city: formData.city,        
+            area: formData.location,     
             medium: formData.category, 
             subjects: formData.subjects.join(', '), 
             daysperweek: parseInt(formData.daysPerWeek.split(' ')[0], 10), 
@@ -287,9 +290,7 @@ const JobPosting = () => {
             code: `TUITION-${Date.now().toString().slice(-6)}`, 
         };
         
-        // if (formData.details && formData.details.trim() !== "") { 
-        //    jobDataToInsert.details = formData.details; 
-        // }
+ 
 
         console.log("Submitting to Supabase 'job' table:", jobDataToInsert);
 
@@ -318,114 +319,121 @@ const JobPosting = () => {
 
 
     return (
-        <div className="min-h-screen w-full bg-gray-50 flex flex-col items-center p-4 sm:p-6 font-roboto">
+        <div className="min-h-screen w-full bg-slate-800 flex flex-col items-center p-4 sm:p-6 font-roboto">
             <header className="w-full max-w-4xl mb-6 flex justify-center items-center relative">
                 <div className="shadow-[0px_4px_20px_rgba(0,0,0,0.15)] rounded-3xl bg-white/80 backdrop-blur-sm py-4 px-16">
                     <h1 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-gray-800 text-center">
                         Hire Tutor
                     </h1>
                 </div>
-                <button onClick={handleCancel} className="absolute top-1/2 right-0 transform -translate-y-1/2 text-gray-500 hover:text-red-600 text-2xl p-2">
+                <button onClick={handleCancel} className="absolute top-1/2 right-0 transform -translate-y-1/2 text-gray-100 hover:text-red-500 text-2xl p-2">
                     <IoClose />
                 </button>
             </header>
 
             <form onSubmit={handleSubmit} className="w-full max-w-4xl bg-white p-6 sm:p-8 rounded-xl shadow-lg">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-5">
-
-                    {/* Column 1 */}
-                    <div className="space-y-5">
-                        <SelectInput name="noOfStudents" label="No of Students" value={formData.noOfStudents} onChange={handleInputChange} options={studentCountOptions} required />
-                        <GenderToggle name="tutorGenderPref" label="Tutor Gender Preference" value={formData.tutorGenderPref} onChange={handleTutorGenderChange} options={['Male', 'Female', 'Any']} />
-                        <TextInput name="salary" label="Salary (BDT)" value={formData.salary} onChange={handleInputChange} placeholder="Enter expected salary" type="number" required />
-                        <SelectInput name="tuitionType" label="Tuition Type" value={formData.tuitionType} onChange={handleInputChange} options={tuitionTypeOptions} required />
-                        <GenderToggle name="studentGender" label="Student Gender" value={formData.studentGender} onChange={handleStudentGenderChange} options={['Male', 'Female']} />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
+                    
+                    <SelectInput name="noOfStudents" label="No of Students" value={formData.noOfStudents} onChange={handleInputChange} options={studentCountOptions} required />
+                    <SelectInput name="city" label="Select City" value={formData.city} onChange={handleInputChange} options={cityOptions} required />
+                    <TextInput name="address" label="Full Street Address (House, Road, etc.)" value={formData.address} onChange={handleInputChange} placeholder="E.g: Flat:3E, House:16, Road:5" required maxLength={150} />
+                    <SelectInput name="location" label="Select Location (Thana/Area)" value={formData.location} onChange={handleInputChange} options={availableLocations} required /> 
+                    
+                    <GenderToggle name="tutorGenderPref" label="Tutor Gender Preference" value={formData.tutorGenderPref} onChange={handleTutorGenderChange} options={['Male', 'Female', 'Any']} />
+                    <GenderToggle name="studentGender" label="Student Gender" value={formData.studentGender} onChange={handleStudentGenderChange} options={['Male', 'Female']} />
+                    
+                    <div>
+                        <TextInput name="salary" label="Salary (BDT)" value={formData.salary} onChange={handleInputChange} placeholder="Enter Job salary" type="number" required maxLength={6} />
+                        <p className="text-xs text-right text-gray-500 mt-1">
+                            {formData.salary.length} / 6
+                        </p>
                     </div>
+                    <SelectInput name="paymentType" label="Payment Basis" value={formData.paymentType} onChange={handleInputChange} options={paymentOptions} required />
 
-                    {/* Column 2 */}
-                     <div className="space-y-5">
-                        <SelectInput name="city" label="Select City" value={formData.city} onChange={handleInputChange} options={cityOptions} required />
-                        {/* 'location' in formData here means Thana/Area */}
-                        <SelectInput name="location" label="Select Location (Thana/Area)" value={formData.location} onChange={handleInputChange} options={availableLocations} required /> 
-                        <SelectInput name="category" label="Category (Medium)" value={formData.category} onChange={handleInputChange} options={mediumOptions} required />
+                    <SelectInput name="category" label="Category (Medium)" value={formData.category} onChange={handleInputChange} options={mediumOptions} required />
+                    <SelectInput name="classCourse" label="Class/Course" value={formData.classCourse} onChange={handleInputChange} options={classOptions} required />
 
-                        <div>
-                            <label htmlFor="subjectToAdd" className="block text-xs font-medium text-gray-600 mb-1">Add Subjects (Up to 5)</label>
-                            <div className="flex gap-2">
-                                <select
-                                    id="subjectToAdd"
-                                    value={subjectToAdd}
-                                    onChange={(e) => { setSubjectToAdd(e.target.value); setSubjectError(""); }}
-                                    className="flex-grow p-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[#6344cc] focus:border-[#6344cc] text-sm"
-                                >
-                                    {subjectOptions
-                                        .filter(option => !formData.subjects.includes(option))
-                                        .map((option) => ( 
-                                            <option key={`subject-option-${option}`} value={option}>
-                                                {option || "-- Select Subject --"}
-                                            </option>
-                                    ))}
-                                </select>
-                                <button
-                                    type="button"
-                                    onClick={addSubject}
-                                    disabled={!subjectToAdd || formData.subjects.length >= 5}
-                                    className="px-3 py-2 bg-[#6344cc] text-white text-sm font-medium rounded-md hover:bg-[#5238a8] disabled:bg-gray-300 disabled:cursor-not-allowed"
-                                >
-                                    Add
-                                </button>
+                    <SelectInput name="tuitionType" label="Tuition Type" value={formData.tuitionType} onChange={handleInputChange} options={tuitionTypeOptions} required />
+                    <SelectInput name="daysPerWeek" label="Days/Week" value={formData.daysPerWeek} onChange={handleInputChange} options={daysOptions} required />
+
+                    <div>
+                        <TextInput name="tutoringTime" label="Tutoring Time (e.g. 5 PM - 7 PM)" value={formData.tutoringTime} onChange={handleInputChange} placeholder="Specify preferred time slot" required maxLength={20} />
+                        <p className="text-xs text-right text-gray-500 mt-1">
+                            {formData.tutoringTime.length} / 20
+                        </p>
+                    </div>
+                    <TextInput name="startingDate" label="Preferred Starting Date" value={formData.startingDate} onChange={handleInputChange} type="date" required />
+
+                    {/* --- FIX: SUBJECTS SECTION RESTRUCTURED FOR BETTER MOBILE UX --- */}
+                    <div className="md:col-span-2">
+                        <label htmlFor="subjectToAdd" className="block text-xs font-medium text-gray-600 mb-1">Add Subjects (Max 5)</label>
+                        
+                        {formData.subjects.length > 0 && (
+                            <div className="mt-2 mb-3 flex flex-wrap gap-1.5 border p-2 rounded-md min-h-[40px]">
+                                {formData.subjects.map((subject, index) => ( 
+                                    <span key={`selected-subject-${subject}-${index}`} className="flex items-center bg-purple-100 text-purple-800 text-xs font-medium pl-2 pr-1 py-0.5 rounded-full h-fit">
+                                        {subject}
+                                        <button
+                                            type="button"
+                                            onClick={() => removeSubject(subject)}
+                                            className="ml-1.5 text-purple-500 hover:text-purple-700 focus:outline-none"
+                                            aria-label={`Remove ${subject}`}
+                                        >
+                                            <FaTimesCircle size={12}/>
+                                        </button>
+                                    </span>
+                                ))}
                             </div>
-                            {subjectError && <p className="text-red-500 text-xs mt-1">{subjectError}</p>}
-                            {formData.subjects.length > 0 && (
-                                <div className="mt-2 flex flex-wrap gap-1.5 border p-2 rounded-md min-h-[40px]">
-                                    {formData.subjects.map((subject, index) => ( 
-                                        <span key={`selected-subject-${subject}-${index}`} className="flex items-center bg-purple-100 text-purple-800 text-xs font-medium pl-2 pr-1 py-0.5 rounded-full h-fit">
-                                            {subject}
-                                            <button
-                                                type="button"
-                                                onClick={() => removeSubject(subject)}
-                                                className="ml-1.5 text-purple-500 hover:text-purple-700 focus:outline-none"
-                                                aria-label={`Remove ${subject}`}
-                                            >
-                                                <FaTimesCircle size={12}/>
-                                            </button>
-                                        </span>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                        <SelectInput name="classCourse" label="Class/Course" value={formData.classCourse} onChange={handleInputChange} options={classOptions} required />
-                    </div>
+                        )}
 
-                    {/* Column 3 */}
-                     <div className="space-y-5">
-                        {/* 'address' in formData here means Full Street Address */}
-                        <TextInput name="address" label="Full Street Address (House, Road, etc.)" value={formData.address} onChange={handleInputChange} placeholder="E.g: Flat:3E, House:12, Road:1" required />
-                        <SelectInput name="daysPerWeek" label="Days/Week" value={formData.daysPerWeek} onChange={handleInputChange} options={daysOptions} required />
-                        <TextInput name="tutoringTime" label="Tutoring Time (e.g., 5 PM - 7 PM)" value={formData.tutoringTime} onChange={handleInputChange} placeholder="Specify preferred time slot" required />
-                        <TextInput name="startingDate" label="Preferred Starting Date" value={formData.startingDate} onChange={handleInputChange} type="date" required />
-                        <SelectInput name="paymentType" label="Payment Basis" value={formData.paymentType} onChange={handleInputChange} options={paymentOptions} required />
-                         <div>
-                            <label htmlFor="details" className="block text-xs font-medium text-gray-600 mb-1">Detailed Requirements (Optional)</label>
-                            <textarea
-                                id="details"
-                                name="details"
-                                rows="3" 
-                                value={formData.details || ""}
-                                onChange={handleInputChange}
-                                className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[#6344cc] focus:border-[#6344cc] text-sm"
-                                placeholder="Any specific needs, timings, tutor qualifications etc."
-                            ></textarea>
+                        <div className="flex flex-col sm:flex-row gap-2">
+                            <select
+                                id="subjectToAdd"
+                                value={subjectToAdd}
+                                onChange={(e) => { setSubjectToAdd(e.target.value); setSubjectError(""); }}
+                                className="flex-grow p-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[#6344cc] focus:border-[#6344cc] text-sm"
+                            >
+                                {subjectOptions
+                                    .filter(option => !formData.subjects.includes(option))
+                                    .map((option) => ( 
+                                        <option key={`subject-option-${option}`} value={option}>
+                                            {option || "-- Select Subject --"}
+                                        </option>
+                                ))}
+                            </select>
+                            <button
+                                type="button"
+                                onClick={addSubject}
+                                disabled={!subjectToAdd || formData.subjects.length >= 5}
+                                className="flex-shrink-0 px-4 py-2 bg-[#6344cc] text-white text-sm font-medium rounded-md hover:bg-[#5238a8] disabled:bg-gray-300 disabled:cursor-not-allowed"
+                            >
+                                Add
+                            </button>
                         </div>
+                        {subjectError && <p className="text-red-500 text-xs mt-1">{subjectError}</p>}
+                    </div>
+                    
+                    <div className="md:col-span-2">
+                        <label htmlFor="details" className="block text-xs font-medium text-gray-600 mb-1">Detailed Requirements (Optional) </label>
+                        <textarea
+                            id="details"
+                            name="details"
+                            rows="3" 
+                            value={formData.details || ""}
+                            onChange={handleInputChange}
+                            className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[#6344cc] focus:border-[#6344cc] text-sm"
+                            placeholder="State specific needs."
+                            maxLength={500}
+                        ></textarea>
                     </div>
                 </div>
 
                 <div className="mt-8 pt-6 border-t border-gray-200 flex flex-col items-center">
-                     {message.text && (
-                        <p className={`mb-4 text-sm text-center ${message.type === 'error' ? 'text-red-600' : 'text-green-600'}`}>
-                            {message.text}
-                        </p>
-                    )}
+                       {message.text && (
+                            <p className={`mb-4 text-sm text-center ${message.type === 'error' ? 'text-red-600' : 'text-green-600'}`}>
+                                {message.text}
+                            </p>
+                       )}
                     <button
                         type="submit"
                         disabled={isLoading}

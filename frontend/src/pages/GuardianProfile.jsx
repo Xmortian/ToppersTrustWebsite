@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { supabase } from '../supabase.js'; // Import Supabase client
+import { supabase } from '../supabase.js'; 
 
-// Icons
-import { FaEdit, FaCheckCircle, FaTimesCircle, FaInfoCircle, FaSignOutAlt } from 'react-icons/fa';
+import { FaEdit, FaCheckCircle, FaTimesCircle, FaInfoCircle, FaSignOutAlt, FaArrowLeft } from 'react-icons/fa';
 import { FiMail, FiPhone, FiMapPin } from 'react-icons/fi';
 
-// Initial state for guardianData, will be overwritten by fetched data
 const initialGuardianDataOnLoad = {
   name: "Loading...",
   contactNumber: "...",
@@ -33,15 +31,12 @@ const GuardianProfile = () => {
   const focusRingColor = "focus:ring-[#6344cc]";
   const sectionHeaderColor = "bg-[#6344cc]";
 
-  // Calculate profile completion (basic example)
   const calculateProfileCompletion = (data) => {
     let completedFields = 0;
-    // Adjusted totalConsideredFields since gender is removed
     const totalConsideredFields = 7; // name, contact, email, city, address, relation, photo
     if (data.name && data.name !== "Loading...") completedFields++;
     if (data.contactNumber && data.contactNumber !== "...") completedFields++;
     if (data.email && data.email !== "...") completedFields++;
-    // if (data.gender && data.gender !== "...") completedFields++; // Removed gender check
     if (data.city && data.city !== "...") completedFields++;
     if (data.address && data.address !== "...") completedFields++;
     if (data.relationWithStudent && data.relationWithStudent !== "...") completedFields++;
@@ -71,9 +66,7 @@ const GuardianProfile = () => {
             name, 
             phone, 
             email, 
-            
             facebook_profile_link, 
-            
             city, 
             address, 
             relation_with_student, 
@@ -93,7 +86,7 @@ const GuardianProfile = () => {
               name: user.email?.split('@')[0] || "Guardian",
               email: user.email || "N/A",
               guardianId: "New User",
-              profileCompletion: calculateProfileCompletion({ email: user.email }), // Recalculate with available data
+              profileCompletion: calculateProfileCompletion({ email: user.email }),
             }));
           } else {
             throw profileFetchError; 
@@ -101,7 +94,7 @@ const GuardianProfile = () => {
         } else if (profileData) {
           let imageUrl = profileData.photo || null;
           if (profileData.photo && !profileData.photo.startsWith('http')) {
-            const { data: publicUrlData } = supabase.storage.from('profile-pics').getPublicUrl(profileData.photo);
+            const { data: publicUrlData } = supabase.storage.from('photo').getPublicUrl(profileData.photo);
             imageUrl = publicUrlData?.publicUrl || profileData.photo; 
           }
 
@@ -109,8 +102,6 @@ const GuardianProfile = () => {
             name: profileData.name || user.email?.split('@')[0] || "Guardian",
             contactNumber: profileData.phone || "N/A",
             email: profileData.email || user.email || "N/A",
-            // gender: profileData.gender || "N/A", // REMOVED GENDER MAPPING
-            linkedinProfile: profileData.linkedin_profile_link || null,
             facebookProfile: profileData.facebook_profile_link || null,
             city: profileData.city || "N/A",
             address: profileData.address || "N/A", 
@@ -135,10 +126,10 @@ const GuardianProfile = () => {
         console.error("Error fetching guardian profile details:", error);
         setError(`Failed to load profile: ${error.message}`);
          setGuardianData(prev => ({ 
-            ...initialGuardianDataOnLoad,
-            name: user.email?.split('@')[0] || "Guardian",
-            email: user.email || "N/A",
-            guardianId: "Error",
+          ...initialGuardianDataOnLoad,
+          name: user.email?.split('@')[0] || "Guardian",
+          email: user.email || "N/A",
+          guardianId: "Error",
         }));
       } finally {
         setLoading(false);
@@ -184,23 +175,34 @@ const GuardianProfile = () => {
     (guardianData.name && guardianData.name !== "Loading..." ? guardianData.name.split(' ').map(n=>n[0]).join('') : "G");
 
   if (loading) {
-    return <div className="flex justify-center items-center min-h-screen text-xl">Loading Guardian Profile...</div>;
+    return <div className="flex justify-center items-center min-h-screen text-xl text-gray-100">Loading Guardian Profile...</div>;
   }
 
   return (
-    <div className="w-full min-h-screen bg-gray-100 p-4 sm:p-6 lg:p-8 font-roboto flex justify-center items-start">
-      <div className="container mx-auto max-w-6xl w-full">
-        <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
-          {/* Left Sidebar */}
-          <aside className="w-full lg:w-2/5 xl:w-1/3 flex-shrink-0">
-            <div className="bg-white p-6 rounded-xl shadow-lg h-full flex flex-col">
+    <div className="w-full min-h-screen bg-slate-800 p-4 sm:p-6 lg:p-8 font-roboto flex justify-center items-start text-gray-100">
+      <div className="container mx-auto max-w-3xl w-full">
+        
+        <div className="mb-6">
+            <button
+                onClick={() => navigate('/guardian-dashboard')}
+                // --- Back button styles are updated to be more visible on dark bg ---
+className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-lg shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-indigo-500 transition-colors"            >
+                <FaArrowLeft />
+                Back to Dashboard
+            </button>
+        </div>
+
+        <div className="flex flex-col gap-6 lg:gap-8">
+
+          <div className="w-full">
+            <div className="bg-white p-6 rounded-xl shadow-lg h-full flex flex-col text-gray-800">
               <div className="flex flex-col items-center mb-6">
-                   <img
-                     src={guardianData.profileImageUrl || profileImageFallback}
-                     alt="Profile"
-                     onError={(e) => { e.target.onerror = null; e.target.src = profileImageFallback; }}
-                     className="w-32 h-32 sm:w-40 sm:h-40 md:w-48 md:h-48 rounded-full border-4 border-gray-200 shadow-md object-cover mb-4"
-                   />
+                  <img
+                    src={guardianData.profileImageUrl || profileImageFallback}
+                    alt="Profile"
+                    onError={(e) => { e.target.onerror = null; e.target.src = profileImageFallback; }}
+                    className="w-32 h-32 sm:w-40 sm:h-40 md:w-48 md:h-48 rounded-full border-4 border-gray-200 shadow-md object-cover mb-4"
+                  />
                 <p className="text-sm text-gray-600">Guardian ID: {guardianData.guardianId}</p>
               </div>
 
@@ -243,11 +245,10 @@ const GuardianProfile = () => {
                     <FaSignOutAlt /> Sign Out
                 </button>
             </div>
-          </aside>
+          </div>
 
-          {/* Right Main Content Area */}
-          <main className="w-full lg:flex-1">
-            <div className="bg-white p-6 sm:p-8 rounded-xl shadow-lg space-y-6">
+          <div className="w-full">
+            <div className="bg-white p-6 sm:p-8 rounded-xl shadow-lg space-y-6 text-gray-800">
               {error && (
                 <div className="p-4 mb-4 text-sm text-red-700 bg-red-100 rounded-lg" role="alert">
                   <span className="font-medium">Error:</span> {error}
@@ -272,15 +273,6 @@ const GuardianProfile = () => {
                     <strong className="block text-gray-600">Email</strong>
                     <span className="text-gray-800 break-all">{guardianData.email}</span>
                   </div>
-                   {/* Gender field removed from display */}
-                   {/* <div>
-                    <strong className="block text-gray-600">Gender</strong>
-                    <span className="text-gray-800">{guardianData.gender || <span className="text-gray-500 italic">Not Given</span>}</span>
-                  </div> */}
-                   <div>
-                    <strong className="block text-gray-600">LinkedIn Profile Link</strong>
-                    {renderProfileLink(guardianData.linkedinProfile, "LinkedIn")}
-                  </div>
                    <div>
                     <strong className="block text-gray-600">Facebook Profile Link</strong>
                     {renderProfileLink(guardianData.facebookProfile, "Facebook")}
@@ -304,13 +296,14 @@ const GuardianProfile = () => {
                    <div className={`${sectionHeaderColor} text-white px-4 py-2 rounded-t-lg flex items-center gap-2`}>
                      <FaCheckCircle />
                      <h2 className="text-lg font-semibold">Verification And Security</h2>
-                 </div>
+                   </div>
                    <div className="border border-t-0 border-gray-300 rounded-b-lg p-4 sm:p-6 text-sm">
                      {renderVerificationStatus(guardianData.isVerified)}
-                 </div>
+                   </div>
               </section>
             </div>
-          </main>
+          </div>
+
         </div>
       </div>
     </div>

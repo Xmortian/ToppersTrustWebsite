@@ -57,13 +57,12 @@ function App() {
     }
   }, [action, pathname]);
 
-  // Effect to set document title and meta description
   useEffect(() => {
-    let title = "Toppers Trust"; // Default title
+    let title = "Toppers Trust"; 
     let metaDescription = "Connecting students and tutors effectively."; // Default description
 
     const pageInfo = new Map([
-        ["/", { title: "Toppers Trust - Welcome", description: "Find the best tutors or offer your tutoring services with Toppers Trust." }],
+        ["/", { title: "Toppers Trust | Find Best Tutors in BD", description: "Toppers Trust is the fastest growing tuition finder platform in Bangladesh. Right tutor. Right guidance. Real results — trusted by thousands of toppers nationwide!" }],
         ["/sign-up-frame", { title: "Sign Up - Toppers Trust", description: "Create your Toppers Trust account as a student, guardian, or tutor." }],
         ["/terms-and-conditions", { title: "Terms & Conditions - Toppers Trust", description: "Read the terms and conditions for using the Toppers Trust platform." }],
         ["/forgot-pass", { title: "Forgot Password - Toppers Trust", description: "Reset your Toppers Trust account password." }],

@@ -3,6 +3,7 @@ module.exports = {
   content: ["./src/**/*.{js,jsx,ts,tsx}"],
   theme: {
     extend: {
+      // --- Your existing 'extend' properties are preserved ---
       colors: {
         "State-Layers-On-Surface-Opacity-12": "rgba(29, 27, 32, 0.12)",
         "Schemes-Surface": "#fef7ff",
@@ -194,7 +195,27 @@ module.exports = {
         "209xl": "228px",
         "95xl": "114px",
       },
+
+      // --- ADDED FOR ANIMATED BACKGROUND ---
+      animation: {
+        'gradient-xy': 'gradient-xy 15s ease infinite',
+      },
+      keyframes: {
+        'gradient-xy': {
+          '0%, 100%': {
+            'background-size': '400% 400%',
+            'background-position': 'left center',
+          },
+          '50%': {
+            'background-size': '200% 200%',
+            'background-position': 'right center',
+          },
+        },
+      },
+      // --- END OF ADDED CODE ---
+
     },
+    // --- Your other theme properties outside of 'extend' ---
     fontWeight: {
       "Body-Font-Weight-Regular": "400",
       "Body-Font-Weight-Strong": "600",

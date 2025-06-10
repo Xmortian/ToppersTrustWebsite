@@ -1,223 +1,299 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { supabase } from '../supabase.js'; // Import Supabase client
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../supabase.js';
 
 // Icons
-import { FaStar, FaTimes, FaCheckCircle } from 'react-icons/fa';
-import { IoClose } from "react-icons/io5";
+import { FaStar, FaCheckCircle, FaRegTrashAlt, FaRegCalendarAlt, FaUserFriends, FaMoneyBillWave, FaBookOpen, FaHome, FaBriefcase } from 'react-icons/fa';
 
-// --- Placeholder Data for Tutors ---
-const initialTutorsDb = [
-  { id: "TUT001", name: "Moutmayen Nafis", university: "BRAC University", grade: "3.4", department: "Computer Science & Engineering", location: "Moghbazar, Dhaka", rating: 5.00, sscInfo: "SSC Grade 5 - Ideal School and College", hscInfo: "HSC Grade 5 - Dhaka College", profileImageUrl: "/a38522fd8f3b402eb5da65d82ffc6e5e-1@2x.png" },
-  { id: "TUT002", name: "Taskia Maisha", university: "Dhaka University", grade: "3.8", department: "English Literature", location: "Gulshan, Dhaka", rating: 4.5, sscInfo: "SSC GPA 5.0 - Viqarunnisa Noon School", hscInfo: "HSC GPA 4.8 - Viqarunnisa Noon College", profileImageUrl: "/a38522fd8f3b402eb5da65d82ffc6e5e-7@2x.png" },
-  { id: "TUT003", name: "Arif Hossain", university: "Jahangirnagar University", grade: "3.9", department: "Mathematics", location: "Mirpur, Dhaka", rating: 4.9, sscInfo: "SSC GPA 5.0 - St. Joseph", hscInfo: "HSC GPA 5.0 - Notre Dame College", profileImageUrl: null },
-  { id: "TUT004", name: "Sumaiya Islam", university: "NSU", grade: "3.7", department: "BBA", location: "Uttara, Dhaka", rating: 4.7, sscInfo: "SSC GPA 4.8 - Scholastica", hscInfo: "HSC GPA 4.5 - Mastermind", profileImageUrl: null },
-  { id: "TUT005", name: "Rahim Ahmed", university: "BUET", grade: "3.6", department: "Mechanical Engineering", location: "Mohammadpur, Dhaka", rating: 4.6, sscInfo: "SSC GPA 5.0 - Govt. Laboratory", hscInfo: "HSC GPA 5.0 - Dhaka Residential", profileImageUrl: null },
-];
+// --- Reusable Helper Components ---
 
-const MAX_CARDS_IN_ROW = 5;
+const JobDetailItem = ({ icon, label, value }) => (
+    <div className="flex items-center text-sm mb-3">
+        <span className="mr-3 text-gray-300">{icon}</span>
+        <span className="text-gray-400">{label}: <span className="font-semibold text-gray-100">{value || 'N/A'}</span></span>
+    </div>
+);
+
+const TutorDetailCard = ({ value, label = '' }) => (
+    <div className="w-full text-center">
+        <p className="text-xs sm:text-sm text-gray-300 leading-snug break-words py-1 px-1.5 bg-white/5 rounded-md shadow-sm">
+            {label}{value || <span className="italic text-gray-500">N/A</span>}
+        </p>
+    </div>
+);
+
+const LoadingSpinner = ({ message }) => (
+    <div className="flex justify-center items-center min-h-screen text-xl bg-[#302f40] text-gray-300">
+        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        {message}...
+    </div>
+);
+
+const ErrorDisplay = ({ error, onRetry }) => (
+    <div className="flex flex-col justify-center items-center min-h-screen text-xl text-red-400 bg-[#302f40]">
+        <p>An Error Occurred: {error}</p>
+        <button onClick={onRetry} className="mt-4 px-6 py-2 bg-blue-500 text-white rounded">
+            Try Again
+        </button>
+    </div>
+);
+
+
+// --- Main Component ---
 
 const TutorCard = () => {
-    const navigate = useNavigate();
-    const [allTutors, setAllTutors] = useState([]);
-    const [currentBatch, setCurrentBatch] = useState([]);
-    const [displayTutor, setDisplayTutor] = useState(null); // The single tutor currently on screen
-    const [rejectedTutorIds, setRejectedTutorIds] = useState([]);
-    const [selectedTutor, setSelectedTutor] = useState(null);
-    const [showSelectedOverlay, setShowSelectedOverlay] = useState(false);
+    // --- State Management ---
+    const [status, setStatus] = useState({ isLoading: true, error: null, message: 'Initializing' });
+    const [guardianId, setGuardianId] = useState(null);
+    const [jobs, setJobs] = useState([]);
+    const [selectedJob, setSelectedJob] = useState(null);
+    const [applicants, setApplicants] = useState([]);
+    const [appointedTutor, setAppointedTutor] = useState(null);
 
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-    const [showLoginPrompt, setShowLoginPrompt] = useState(false);
-
-    // --- Fetch Tutors Data ---
+    // --- Side Effects ---
     useEffect(() => {
-        const fetchTutors = async () => {
-            setLoading(true); setError(null);
-            // --- TODO: Implement actual Supabase fetching for tutors ---
-            await new Promise(resolve => setTimeout(resolve, 500));
-            const fetchedTutors = initialTutorsDb;
-            setAllTutors(fetchedTutors);
-            const initialBatch = fetchedTutors.slice(0, MAX_CARDS_IN_ROW);
-            setCurrentBatch(initialBatch);
-            if (initialBatch.length > 0) {
-                setDisplayTutor(initialBatch[0]);
+        const fetchGuardian = async () => {
+            setStatus({ isLoading: true, error: null, message: 'Authenticating' });
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const { data, error } = await supabase.from('guardian').select('id').eq('user_id', user.id).single();
+                if (error) setStatus({ isLoading: false, error: 'Could not find your guardian profile.', message: '' });
+                else if (data) setGuardianId(data.id);
+                else setStatus({ isLoading: false, error: 'Guardian profile not found for the logged-in user.', message: '' });
             } else {
-                setDisplayTutor(null);
+                setStatus({ isLoading: false, error: 'You must be logged in to view this page.', message: '' });
             }
-            setLoading(false);
         };
-        fetchTutors();
+        fetchGuardian();
     }, []);
 
-    // Check Auth Status Function
-    const checkAuth = async () => {
-        const { data: { user } } = await supabase.auth.getUser();
-        return user;
-    };
+    useEffect(() => {
+        if (!guardianId) return;
 
-    // Handle Rejecting a Tutor
-    const handleReject = async (tutorToRejectId) => {
-        const user = await checkAuth();
-        if (!user) {
-            setShowLoginPrompt(true);
-            return;
-        }
-        if (selectedTutor) return;
+        const fetchJobsAndTheirStatus = async () => {
+            setStatus({ isLoading: true, error: null, message: 'Fetching your jobs and statuses' });
+            try {
+                const { data: jobsData, error: jobsError } = await supabase
+                    .from('job')
+                    .select('*, apply_job(count), accepted_jobs(tutor_id)')
+                    .eq('guardianid', guardianId)
+                    .order('posted_date', { ascending: false });
 
-        if (!rejectedTutorIds.includes(tutorToRejectId)) {
-            const newRejectedIds = [...rejectedTutorIds, tutorToRejectId];
-            setRejectedTutorIds(newRejectedIds);
+                if (jobsError) throw jobsError;
+                if (!jobsData) {
+                    setJobs([]);
+                    setStatus({ isLoading: false, error: null, message: '' });
+                    return;
+                }
 
-            if (newRejectedIds.length >= currentBatch.length - 1) {
-                const remainingTutor = currentBatch.find(t => !newRejectedIds.includes(t.id));
-                if (remainingTutor) {
-                    setSelectedTutor(remainingTutor);
-                    setShowSelectedOverlay(true);
-                    console.log("Auto-selected tutor:", remainingTutor.name);
-                    alert(`Tutor Selected: ${remainingTutor.name}`);
-                    // --- TODO: API call to shortlist/select this tutor ---
+                const jobIds = jobsData.map(job => job.id);
+                let acceptedStatuses = {};
+
+                if (jobIds.length > 0) {
+                    const { data: acceptedData, error: acceptedError } = await supabase
+                        .from('accepted_jobs')
+                        .select('job_id, tutor_id')
+                        .in('job_id', jobIds);
+                    
+                    if (acceptedError) {
+                        console.warn("DEBUG: Could not fetch accepted statuses, proceeding without:", acceptedError);
+                    } else if (acceptedData) {
+                        acceptedData.forEach(acc => {
+                            if (acc.tutor_id) {
+                                acceptedStatuses[acc.job_id] = { tutor_id: acc.tutor_id };
+                            }
+                        });
+                    }
                 }
-            } else {
-                const currentDisplayIndexInBatch = currentBatch.findIndex(t => t.id === displayTutor.id);
-                let nextIndex = currentDisplayIndexInBatch + 1;
-                while(nextIndex < currentBatch.length && newRejectedIds.includes(currentBatch[nextIndex].id)){
-                    nextIndex++;
-                }
-                if(nextIndex < currentBatch.length){
-                    setDisplayTutor(currentBatch[nextIndex]);
-                } else {
-                     const remainingTutor = currentBatch.find(t => !newRejectedIds.includes(t.id));
-                     if(remainingTutor) {
-                        setSelectedTutor(remainingTutor);
-                        setShowSelectedOverlay(true);
-                        setDisplayTutor(remainingTutor);
-                     }
-                }
+
+                const combinedJobs = jobsData.map(job => ({
+                    ...job,
+                    accepted_jobs: acceptedStatuses[job.id] ? [acceptedStatuses[job.id]] : [] 
+                }));
+                
+                setJobs(combinedJobs);
+                setStatus({ isLoading: false, error: null, message: '' });
+
+            } catch (error) {
+                console.error("DEBUG (Initial Job Fetch Error):", error);
+                setStatus({ isLoading: false, error: `Failed to load job data. ${error.message}`, message: '' });
             }
+        };
+        
+        if (!selectedJob) { 
+            fetchJobsAndTheirStatus();
+        }
+    }, [guardianId, selectedJob]);
+
+    const fetchApplicantsForJob = async (job) => {
+        setStatus({ isLoading: true, error: null, message: `Loading applicants` });
+        setSelectedJob(job);
+        try {
+            const { data: applications, error: appError } = await supabase.from('apply_job').select('tutor_id').eq('job_id', job.id);
+            if (appError) throw appError;
+            if (applications.length === 0) {
+                setApplicants([]);
+            } else {
+                const tutorIds = applications.map(app => app.tutor_id);
+                const { data: tutors, error: tutorError } = await supabase.from('tutor_card').select('*').in('id', tutorIds);
+                if (tutorError) throw tutorError;
+
+                // *** THE FIX IS APPLIED HERE ***
+                const mappedTutors = (tutors || []).map(t => {
+                    let imageUrl = null;
+                    // Check if a photo path exists for the tutor
+                    if (t.photo) {
+                        // Generate the full public URL from the stored path
+                        const { data: publicUrlData } = supabase.storage
+                            .from('photo') // Your correct bucket name
+                            .getPublicUrl(t.photo);
+                        
+                        imageUrl = publicUrlData.publicUrl;
+                    }
+
+                    // Return the complete tutor object with the full image URL
+                    return {
+                        id: t.id,
+                        name: t.name || 'N/A',
+                        university: t.uni || 'N/A',
+                        grade: t.uni_grade || 'N/A',
+                        qualification: t.qualification || 'N/A',
+                        rating: t.rating ? parseFloat(t.rating) : null,
+                        ssc_grade: t.ssc_grade,
+                        ssc_school: t.ssc_school,
+                        hsc_grade: t.hsc_grade,
+                        hsc_school: t.hsc_school,
+                        photo: imageUrl, // Use the generated URL instead of the raw path
+                        experience_years: t.experience_years
+                    };
+                });
+                
+                setApplicants(mappedTutors);
+            }
+        } catch (error) {
+            setStatus({ isLoading: false, error: `Failed to fetch applicants. ${error.message}`, message: '' });
+        } finally {
+            setStatus({ isLoading: false, error: null, message: '' });
         }
     };
 
-    const handleLoginRedirect = () => {
-        setShowLoginPrompt(false);
-        navigate('/');
+    const handleAssignTutor = async (tutor) => {
+        if (appointedTutor) return;
+        if (!window.confirm(`Are you sure you want to assign ${tutor.name} as your tutor?`)) return;
+        setStatus({ isLoading: true, error: null, message: `Assigning ${tutor.name}` });
+        const assignmentData = { job_id: selectedJob.id, guardian_id: guardianId, tutor_id: tutor.id };
+        const { error } = await supabase.from('accepted_jobs').upsert(assignmentData, { onConflict: 'job_id' });
+        if (error) {
+            setStatus({ isLoading: false, error: `Failed to assign tutor. ${error.message}`, message: '' });
+        } else {
+            setAppointedTutor(tutor);
+            setJobs(prevJobs => prevJobs.map(j => 
+                j.id === selectedJob.id ? { ...j, accepted_jobs: [{ tutor_id: tutor.id }] } : j
+            ));
+            setStatus({ isLoading: false, error: null, message: '' });
+        }
     };
 
-    const tutorProfileImageFallback = (name) => `https://placehold.co/150x200/777777/FFF?text=${name ? name.split(' ').map(n=>n[0]).join('') : 'T'}`;
+    const handleDeleteJob = async (jobId) => {
+        if (!window.confirm("Are you sure you want to permanently delete this job posting?")) return;
+        const { error } = await supabase.from('job').delete().eq('id', jobId);
+        if (error) alert("Failed to delete job: " + error.message);
+        else setJobs(prevJobs => prevJobs.filter(j => j.id !== jobId));
+    };
+    
+    const handleReturnToJobList = () => {
+        setSelectedJob(null);
+        setApplicants([]);
+        setAppointedTutor(null);
+    };
+    
+    const tutorProfileImageFallback = (name) => `https://placehold.co/200x280/4A5568/E2E8F0?text=${name?.split(' ').map(n=>n[0]).join('') || 'T'}&font=roboto`;
+    
+    const renderJobCard = (job, isLockedView = false) => {
+        if (!job || typeof job.id === 'undefined') {
+            console.warn("DEBUG: Attempted to render a job card with invalid job or job.id", job);
+            return null; 
+        }
 
-    if (loading) return <div className="flex justify-center items-center min-h-screen text-xl bg-[#302f40] text-gray-300">Loading Tutors...</div>;
-    if (error) return <div className="flex justify-center items-center min-h-screen text-xl text-red-400 bg-[#302f40]">Error: {error}</div>;
+        const applicantCount = job.apply_job?.[0]?.count || 0;
+        const isJobFilled = job.accepted_jobs && job.accepted_jobs.length > 0 && job.accepted_jobs[0]?.tutor_id != null;
 
-    return (
-        <div className={`w-full min-h-screen bg-[#302f40] flex flex-col items-center p-4 sm:p-6 overflow-x-auto`}>
-            <h1 className="text-3xl sm:text-4xl font-bold text-gray-300 mb-8 mt-4 text-center">Select Your Tutor</h1>
-
-            {/* Login Prompt Modal/Overlay */}
-            {showLoginPrompt && (
-                 <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50 p-4">
-                    <div className="bg-white p-6 rounded-lg shadow-xl text-center max-w-sm">
-                        <h3 className="text-lg font-semibold mb-3 text-gray-800">Login Required</h3>
-                        <p className="text-sm text-gray-600 mb-4">You need to be logged in to select or reject tutors.</p>
-                        <button onClick={handleLoginRedirect} className="w-full bg-[#6344cc] text-white py-2 px-4 rounded-md hover:bg-[#5238a8] transition-colors"> Go to Login / Sign Up </button>
-                        <button onClick={() => setShowLoginPrompt(false)} className="mt-2 text-xs text-gray-500 hover:underline"> Dismiss </button>
+        return (
+            <div className={`relative bg-[#3e3d5a] p-6 rounded-lg shadow-lg ${isLockedView ? 'mb-12' : ''}`}>
+                {applicantCount > 0 && !isJobFilled && !isLockedView && (
+                    <div className="absolute top-0 left-0 -mt-3 -ml-3 w-8 h-8 bg-red-600 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-lg border-2 border-gray-800">{applicantCount}</div>
+                )}
+                <div className="flex justify-between items-start mb-4">
+                    <h2 className="text-lg font-bold text-gray-100">Code : {job.code || `TUITION-${job.id}`}</h2>
+                    <div className="text-right flex-shrink-0 ml-4">
+                        {!isJobFilled && !isLockedView && (
+                            <button onClick={() => handleDeleteJob(job.id)} className="text-red-400 hover:text-red-600 transition-colors" aria-label="Delete job"><FaRegTrashAlt size={20} /></button>
+                        )}
+                        <p className="text-xs text-gray-400 mt-1">Posted Date : {job.posted_date ? new Date(job.posted_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A'}</p>
                     </div>
                 </div>
-            )}
+                <div className="flex flex-wrap border-t border-gray-700/50 pt-4">
+                    <div className="w-full md:w-1/2 md:pr-4"><JobDetailItem icon={<FaRegCalendarAlt />} label="Days / Week" value={job.daysperweek} /><JobDetailItem icon={<FaMoneyBillWave />} label="Salary" value={`BDT ${job.salary}`} /><JobDetailItem icon={<FaBookOpen />} label="Subjects" value={job.subjects} /></div>
+                    <div className="w-full md:w-1/2 md:pr-4"><JobDetailItem icon={<FaUserFriends />} label="No. of Students" value={job.numberofstudents} /><JobDetailItem icon={<FaHome />} label="Tuition Type" value={job.tuition_type} /></div>
+                </div>
+                {!isLockedView && (
+                    <button onClick={() => fetchApplicantsForJob(job)} disabled={isJobFilled} className="mt-6 w-full text-white font-semibold rounded-lg shadow py-3 text-lg transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed bg-[#6344cc] hover:bg-[#5238a8]">
+                        {isJobFilled ? 'Tutor Appointed' : 'Review Applicants'}
+                    </button>
+                )}
+            </div>
+        );
+    };
 
-            {/* Row of Tutor Cards */}
-            {currentBatch.length > 0 ? (
-                <div className="flex flex-row justify-center items-start gap-4 md:gap-6 lg:gap-8 pb-8 flex-wrap">
-                    {currentBatch.map((tutor) => {
-                        const isRejected = rejectedTutorIds.includes(tutor.id);
-                        const isSelected = selectedTutor && selectedTutor.id === tutor.id;
+    if (status.isLoading) return <LoadingSpinner message={status.message} />;
+    if (status.error) return <ErrorDisplay error={status.error} onRetry={() => { setStatus({isLoading: true, error: null, message: 'Retrying...'}); setGuardianId(id => id); setSelectedJob(null); }} />;
 
-                        return (
-                            <div
-                                key={tutor.id}
-                                className={`relative bg-[#2c2b38] text-white rounded-2xl shadow-xl p-4 w-64 sm:w-72 md:w-80 flex flex-col transition-all duration-300 ease-in-out
-                                            ${isRejected ? 'opacity-20 transform scale-90' : 'opacity-100'}
-                                            ${isSelected ? 'border-4 border-green-400 scale-105 shadow-2xl' : 'border-2 border-transparent'}
-                                `}
-                                style={{ minHeight: '480px' }} // Increased min-height for more content
-                            >
-                                {/* Main content flex container */}
-                                <div className="flex flex-row flex-grow">
-                                    {/* Left Column: Profile Image */}
-                                    <div className="w-2/5 flex-shrink-0 flex items-start justify-center pt-2 pr-3"> {/* Added pt-2 */}
-                                        <img
-                                            src={tutor.profileImageUrl || tutorProfileImageFallback(tutor.name)}
-                                            alt={tutor.name}
-                                            className="w-full h-auto max-h-[180px] sm:max-h-[220px] object-cover rounded-lg shadow-md"
-                                        />
+    return (
+        <div className="w-full min-h-screen bg-[#302f40] flex flex-col items-center p-4 sm:p-6">
+            {selectedJob ? (
+                <div className="w-full max-w-4xl">
+                    <button onClick={handleReturnToJobList} className="mb-8 px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 z-30">← Back to All Jobs</button>
+                    {renderJobCard(selectedJob, true)}
+                    <h2 className="text-2xl font-bold text-center text-gray-100 mb-6">Applicants for this Job</h2>
+                    {applicants.length > 0 ? (
+                        <div className="flex flex-row justify-center items-start gap-4 md:gap-6 lg:gap-8 pb-8 flex-wrap">
+                            {applicants.map(tutor => (
+                                <div key={tutor.id} className={`bg-[#2c2b38] text-white rounded-2xl shadow-xl p-4 w-72 flex flex-col transition-all duration-500 ease-in-out ${appointedTutor && appointedTutor.id !== tutor.id ? 'opacity-30 pointer-events-none' : 'opacity-100'} ${appointedTutor && appointedTutor.id === tutor.id ? 'border-4 border-green-400 scale-105' : 'border-2 border-transparent'}`} style={{ minHeight: '520px' }}>
+                                    <div className="flex flex-col items-center pt-2 pb-3"><img src={tutor.photo || tutorProfileImageFallback(tutor.name)} alt={tutor.name} className="w-36 h-36 rounded-full object-cover border-4 border-gray-500 shadow-lg mb-3" /></div>
+                                    <div className="flex-grow flex flex-col items-center text-center space-y-1.5 px-1">
+                                        <h2 className="text-xl font-bold text-gray-50 mb-1">{tutor.name}</h2>
+                                            <TutorDetailCard value={`${tutor.university}`} />
+                                            <TutorDetailCard value={`${tutor.qualification} -- GPA : ${tutor.grade}`} />
+
+                                        <TutorDetailCard label="Rating : " value={tutor.rating ? `${tutor.rating.toFixed(2)} / 5.00` : 'Not Rated'} />
+                                        <TutorDetailCard value={`SSC GPA : ${tutor.ssc_grade || 'N/A'} - ${tutor.ssc_school || 'N/A'}`} />
+                                        <TutorDetailCard value={`HSC GPA : ${tutor.hsc_grade || 'N/A'} - ${tutor.hsc_school || 'N/A'}`} />
+                                        <TutorDetailCard label="Total Experience : " value={tutor.experience_years ? `${tutor.experience_years} years` : 'N/A'} />
                                     </div>
-
-                                    {/* Right Column: Details */}
-                                    <div className="w-3/5 flex flex-col justify-start pl-2 space-y-1.5"> {/* Use space-y for vertical spacing */}
-                                        <h2 className="text-base sm:text-lg font-semibold text-center mb-1 text-gray-50 truncate">{tutor.name}</h2>
-                                        <DetailItemFigma value={`${tutor.university} Grade : ${tutor.grade}`} />
-                                        <DetailItemFigma value={tutor.department} />
-                                        {/* Removed the central logo here */}
-                                        <DetailItemFigma value={tutor.location} />
-                                        <DetailItemFigma value={tutor.rating ? `Rating : ${tutor.rating.toFixed(2)} / 5.00` : 'Rating : N/A'} icon={<FaStar className="text-yellow-400 inline mr-1 text-[10px]" />} />
-                                        <DetailItemFigma value={tutor.sscInfo} />
-                                        <DetailItemFigma value={tutor.hscInfo} />
-                                    </div>
+                                    {!appointedTutor && (<div className="mt-auto pt-4 flex justify-around items-center"><button onClick={() => handleAssignTutor(tutor)} className="p-3 bg-green-500/80 hover:bg-green-600 rounded-full text-white transition-colors shadow-md" aria-label="Select Tutor"><FaCheckCircle size={18} /></button></div>)}
                                 </div>
-
-                                {/* Reject Button at the bottom of the card */}
-                                {!selectedTutor && !isRejected && (
-                                    <div className="mt-auto pt-3 flex justify-center">
-                                        <button
-                                            onClick={() => handleReject(tutor.id)}
-                                            className="p-2 bg-red-500/70 hover:bg-red-600/90 rounded-full text-white transition-colors"
-                                            aria-label="Reject Tutor"
-                                        >
-                                            <FaTimes size={16} />
-                                        </button>
-                                    </div>
-                                )}
-
-                                {/* SELECTED Overlay */}
-                                {isSelected && showSelectedOverlay && (
-                                     <div className="absolute inset-0 bg-green-600 bg-opacity-85 flex flex-col items-center justify-center rounded-2xl pointer-events-none z-10 p-2 text-center">
-                                         <FaCheckCircle className="text-white text-5xl sm:text-6xl mb-2" />
-                                         <span className="text-white text-2xl sm:text-3xl font-bold">SELECTED!</span>
-                                     </div>
-                                 )}
-                            </div>
-                        );
-                    })}
+                            ))}
+                        </div>
+                    ) : <div className="text-center text-gray-400 text-xl p-8 bg-gray-800/20 rounded-lg"><p>No one has applied for this job yet.</p></div>}
+                    {appointedTutor && (<div className="mt-8 text-center"><p className="text-green-400 font-semibold text-lg animate-pulse">Tutor {appointedTutor.name} has been appointed!</p><button onClick={handleReturnToJobList} className="mt-4 inline-block px-6 py-2 bg-[#6344cc] text-white font-semibold rounded-lg shadow hover:bg-[#5238a8] transition-colors">Return to Dashboard</button></div>)}
                 </div>
             ) : (
-                !loading && <p className="text-center text-gray-400 text-xl p-4">No tutors to display in this batch.</p>
-            )}
-
-            {selectedTutor && (
-                 <div className="mt-8 text-center">
-                    <p className="text-green-400 font-semibold text-lg">Tutor selection process complete!</p>
-                    <p className="text-gray-300">Selected Tutor: {selectedTutor.name}</p>
-                     <Link to="/guardian-dashboard" className="mt-4 inline-block px-6 py-2 bg-[#6344cc] text-white font-semibold rounded-lg shadow hover:bg-[#5238a8] transition-colors">
-                        Back to Dashboard
-                    </Link>
-                 </div>
-            )}
-             {!selectedTutor && currentBatch.length > 0 && rejectedTutorIds.length === currentBatch.length && (
-                <div className="mt-8 text-center text-yellow-400 font-semibold text-lg">
-                    All tutors in this batch have been reviewed.
+                <div className="w-full max-w-4xl">
+                    <h1 className="text-3xl sm:text-4xl font-bold text-gray-100 mb-8 mt-4 text-center">Your Posted Jobs</h1>
+                    {jobs.length > 0 ? (
+                        <div className="space-y-8">
+                            {jobs.map(job => (
+                                job && typeof job.id !== 'undefined' ?
+                                <div key={job.id}>{renderJobCard(job)}</div> : null
+                            ))}
+                        </div>
+                    ) : <p className="text-center text-gray-400 text-xl p-4">You have not posted any jobs yet.</p>}
                 </div>
             )}
         </div>
     );
 };
-
-// Helper component for displaying details in Figma style
-const DetailItemFigma = ({ value, icon = null }) => (
-    <div className="mb-1 text-center"> {/* Ensure items are centered if they wrap */}
-        <p className="text-xs sm:text-sm text-gray-100 leading-snug break-words py-1 px-2 bg-white/10 rounded-md shadow"> {/* Brighter text, lighter bg */}
-            {icon && <span className="mr-1">{icon}</span>}
-            {value || <span className="italic text-gray-400">Not Provided</span>}
-        </p>
-    </div>
-);
 
 export default TutorCard;
